@@ -1,5 +1,6 @@
 import java.util.*;
 
+// TODO: If robot dig and find nothing, he return to headquarters
 class Player {
 
     enum Entity_Type {
@@ -19,7 +20,7 @@ class Player {
 
     private static int radarCooldown;
     private static int trapCooldown;
-    private static Entity[] robots = new Entity[5];
+    private static Entity[] robots = new Entity[10];
 
     private static NavigableSet<Case> oreRemaining = new TreeSet<>(new CaseComparator());
 
@@ -61,14 +62,16 @@ class Player {
                 int x = in.nextInt();
                 int y = in.nextInt(); // position of the entity
                 int item = in.nextInt(); // if this entity is a robot, the item it is carrying (-1 for NONE, 2 for RADAR, 3 for TRAP, 4 for ORE)
-                if (initializationTurn && id < 5) {
+                if (initializationTurn) {
                     robots[id] = new Entity(id, x, y);
-                    robots[id].directionX = x;
-                    robots[id].directionY = y;
-                }
-                if (id < 5) {
-                    robots[id].item = convertItemType(item);
                     robots[id].type = convertEntityType(type);
+                    if (convertEntityType(type) == Entity_Type.ALLY_ROBOT) {
+                        robots[id].directionX = x;
+                        robots[id].directionY = y;
+                    }
+                }
+                if (id < 10 && (robots[id].type == Entity_Type.ALLY_ROBOT || robots[id].type == Entity_Type.ENEMY_ROBOT)) {
+                    robots[id].item = convertItemType(item);
                     robots[id].x = x;
                     robots[id].y = y;
                 }
@@ -77,8 +80,8 @@ class Player {
             for (int i = 0; i < 5; i++) {
                 System.err.println(robots[i]);
             }
-            System.err.println(oreRemaining);
-            for (int i = 1 ; i < 5 ; i++) {
+            int firstAllyMiningRobot = robots[0].type == Entity_Type.ALLY_ROBOT ? 1 : 6;
+            for (int i = firstAllyMiningRobot ; i < firstAllyMiningRobot + 4 ; i++) {
                 if (!oreRemaining.isEmpty() && robots[i].x == 0) {
                     chooseOreToGo(i);
                     move(i);
@@ -106,15 +109,16 @@ class Player {
     }
 
     private static void putRadar() {
-        if (robots[0].isInHeadquarters() && radarCooldown == 0 && robots[0].item != Item_Type.RADAR){
+        int position = robots[0].type == Entity_Type.ALLY_ROBOT ? 0 : 5;
+        if (robots[position].isInHeadquarters() && radarCooldown == 0 && robots[position].item != Item_Type.RADAR){
             System.out.println("REQUEST RADAR");
             isRadarSet = false;
-        } else if (!isRadarSet && robots[0].isInHeadquarters() && radarCooldown > 0 && robots[0].item != Item_Type.RADAR) {
+        } else if (!isRadarSet && robots[position].isInHeadquarters() && radarCooldown > 0 && robots[position].item != Item_Type.RADAR) {
             System.out.println("WAIT");
-        } else if (!isRadarSet && !robots[0].isInNextRadarPosition()) {
+        } else if (!isRadarSet && !robots[position].isInNextRadarPosition()) {
             System.out.println("MOVE " + nextRadarX + " " + nextRadarY);
-        } else if (robots[0].isInNextRadarPosition()) {
-            System.out.println("DIG " + robots[0].x + " " + robots[0].y);
+        } else if (robots[position].isInNextRadarPosition()) {
+            System.out.println("DIG " + robots[position].x + " " + robots[position].y);
             calculateNextRadarPosition();
             isRadarSet = true;
         } else {
