@@ -1,6 +1,8 @@
 import java.util.*;
 
 // TODO: If robot dig and find nothing, he return to headquarters
+// TODO: Sometimes, robots goes to the same ore vein
+// TODO: Robots can start and try digging ore.
 class Player {
 
     enum Entity_Type {
