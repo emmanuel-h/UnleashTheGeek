@@ -2,6 +2,7 @@ import java.util.*;
 
 // TODO: If robot dig and find nothing, he return to headquarters
 // TODO: Sometimes, robots goes to the same ore vein
+// TODO: Modify TreeSet Collection to care about ore number in same case
 // TODO: Robots can start and try digging ore.
 class Player {
 
@@ -52,6 +53,9 @@ class Player {
                     board[i][j].hole = in.nextInt() == 1; // 1 if cell has a hole
                     if (!board[i][j].ore.equals("?") && Integer.parseInt(board[i][j].ore) > 0) {
                         oreRemaining.add(board[i][j]);
+                    }
+                    if (!board[i][j].ore.equals("?") && Integer.parseInt(board[i][j].ore) == 0) {
+                        oreRemaining.remove(board[i][j]);
                     }
                 }
             }
