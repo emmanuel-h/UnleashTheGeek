@@ -21,12 +21,23 @@ class Player {
     private static int trapCooldown;
     private static Entity[] robots = new Entity[5];
 
+    private static NavigableSet<Case> oreRemaining = new TreeSet<>(new CaseComparator());
+
+    private static Case[][] board;
+
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
         width = in.nextInt();
         height = in.nextInt(); // size of the map
 
-        Case[][] board = new Case[height][width];
+        board = new Case[height][width];
+        for (int i = 0 ; i < height ; i++) {
+            for (int j = 0; j < width ; j++) {
+                board[i][j] = new Case();
+                board[i][j].x = j;
+                board[i][j].y = i;
+            }
+        }
 
         // game loop
         while (true) {
@@ -34,9 +45,11 @@ class Player {
             int opponentScore = in.nextInt();
             for (int i = 0; i < height; i++) {
                 for (int j = 0; j < width; j++) {
-                    board[i][j] = new Case();
                     board[i][j].ore = in.next(); // amount of ore or "?" if unknown
                     board[i][j].hole = in.nextInt() == 1; // 1 if cell has a hole
+                    if (!board[i][j].ore.equals("?") && Integer.parseInt(board[i][j].ore) > 0) {
+                        oreRemaining.add(board[i][j]);
+                    }
                 }
             }
             int entityCount = in.nextInt(); // number of entities visible to you
@@ -50,6 +63,8 @@ class Player {
                 int item = in.nextInt(); // if this entity is a robot, the item it is carrying (-1 for NONE, 2 for RADAR, 3 for TRAP, 4 for ORE)
                 if (initializationTurn && id < 5) {
                     robots[id] = new Entity(id, x, y);
+                    robots[id].directionX = x;
+                    robots[id].directionY = y;
                 }
                 if (id < 5) {
                     robots[id].item = convertItemType(item);
@@ -62,11 +77,32 @@ class Player {
             for (int i = 0; i < 5; i++) {
                 System.err.println(robots[i]);
             }
+            System.err.println(oreRemaining);
             for (int i = 1 ; i < 5 ; i++) {
-                System.out.println("WAIT"); // WAIT|MOVE x y|DIG x y|REQUEST item
+                if (!oreRemaining.isEmpty() && robots[i].x == 0) {
+                    chooseOreToGo(i);
+                    move(i);
+                } else if (robots[i].x != robots[i].directionX || robots[i].y != robots[i].directionY) {
+                    move(i);
+                } else if (robots[i].x == robots[i].directionX && robots[i].y == robots[i].directionY) {
+                    System.out.println("DIG " + robots[i].x + " " + robots[i].y);
+                    robots[i].directionX = 0;
+                } else {
+                    System.out.println("WAIT"); // WAIT|MOVE x y|DIG x y|REQUEST item
+                }
             }
             initializationTurn = false;
         }
+    }
+
+    private static void chooseOreToGo(int i) {
+        Case caseToGo = oreRemaining.pollFirst();
+        robots[i].directionX = caseToGo.x;
+        robots[i].directionY = caseToGo.y;
+    }
+
+    private static void move(int i) {
+        System.out.println("MOVE " + robots[i].directionX + " " + robots[i].directionY);
     }
 
     private static void putRadar() {
@@ -116,6 +152,9 @@ class Player {
     public static class Case {
         String ore;
         boolean hole;
+        int idRobot;
+        int x;
+        int y;
     }
 
     public static class Entity {
@@ -124,6 +163,8 @@ class Player {
         Item_Type item;
         int x;
         int y;
+        int directionX;
+        int directionY;
 
         Entity(int id, int x, int y) {
             this.id = id;
@@ -148,6 +189,15 @@ class Player {
                     ", x=" + x +
                     ", y=" + y +
                     '}';
+        }
+    }
+
+    static class CaseComparator implements Comparator<Case> {
+
+        @Override
+        public int compare(Case o1, Case o2) {
+            if (o1.x == o2.x && o1.y == o2.y) return 0;
+            return o1.x + o1.y > o2.x + o2.y ? 1 : -1;
         }
     }
 }
