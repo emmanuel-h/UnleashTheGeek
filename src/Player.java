@@ -1,10 +1,8 @@
 import java.util.*;
 
 // TODO: If robot dig and find nothing, he returns to headquarters
-// TODO: Sometimes, robots goes to the same ore vein
 // TODO: Modify TreeSet Collection to care about ore number in same case
 // TODO: Robots can start and try digging ore.
-// TODO: Improve radar robot path. -> list of radar position.
 // TODO: Radar robot can mine after his job.
 class Player {
 
@@ -19,8 +17,6 @@ class Player {
 
     private static boolean isRadarSet = false;
     private static boolean isradarJustSet = false;
-    private static int nextRadarX = 3;
-    private static int nextRadarY = 3;
 
     private static boolean initializationTurn = true;
 
@@ -32,10 +28,14 @@ class Player {
 
     private static Case[][] board;
 
+    private static LinkedList<Case> radarPositions = new LinkedList<>();
+
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
         width = in.nextInt();
         height = in.nextInt(); // size of the map
+
+        fillRadarPositions();
 
         board = new Case[height][width];
         for (int i = 0 ; i < height ; i++) {
@@ -52,14 +52,15 @@ class Player {
             int opponentScore = in.nextInt();
             for (int i = 0; i < height; i++) {
                 for (int j = 0; j < width; j++) {
-                    board[i][j].ore = in.next(); // amount of ore or "?" if unknown
+                    String ore = in.next();
+                    board[i][j].ore = "?".equals(ore) ? -1 : Integer.parseInt(ore); // amount of ore or "?" if unknown
                     board[i][j].hole = in.nextInt() == 1; // 1 if cell has a hole
-                    if (isradarJustSet && !board[i][j].ore.equals("?") && Integer.parseInt(board[i][j].ore) > 0) {
-                        for (int k = 0 ; k <  Integer.parseInt(board[i][j].ore) ; k++) {
+                    if (isradarJustSet && board[i][j].ore > 0) {
+                        for (int k = 0 ; k <  board[i][j].ore ; k++) {
                             oreRemaining.add(board[i][j]);
                         }
                     }
-                    if (!board[i][j].ore.equals("?") && Integer.parseInt(board[i][j].ore) == 0) {
+                    if (board[i][j].ore == 0) {
                         while (oreRemaining.contains(board[i][j]))
                             oreRemaining.remove(board[i][j]);
                     }
@@ -102,8 +103,17 @@ class Player {
                 } else if (robots[i].x != robots[i].directionX || robots[i].y != robots[i].directionY) {
                     move(i);
                 } else if (robots[i].x == robots[i].directionX && robots[i].y == robots[i].directionY) {
-                    System.out.println("DIG " + robots[i].x + " " + robots[i].y);
-                    robots[i].directionX = 0;
+                    if (board[robots[i].y][robots[i].x].ore == 0) {
+                        if (oreRemaining.isEmpty())
+                            System.out.println("WAIT");
+                        else {
+                            chooseOreToGo(i);
+                            move(i);
+                        }
+                    } else {
+                        System.out.println("DIG " + robots[i].x + " " + robots[i].y);
+                        robots[i].directionX = 0;
+                    }
                 } else {
                     System.out.println("WAIT"); // WAIT|MOVE x y|DIG x y|REQUEST item
                 }
@@ -112,9 +122,20 @@ class Player {
         }
     }
 
+    private static void fillRadarPositions() {
+        radarPositions.add(new Case(5, 5));
+        radarPositions.add(new Case(10, 9));
+        radarPositions.add(new Case(14, 5));
+        radarPositions.add(new Case(19, 9));
+        radarPositions.add(new Case(23, 5));
+        radarPositions.add(new Case(28, 9));
+        radarPositions.add(new Case(5, 13));
+        radarPositions.add(new Case(15, 13));
+        radarPositions.add(new Case(24, 13));
+    }
+
     private static void chooseOreToGo(int i) {
         Case caseToGo = oreRemaining.remove(0);
-        System.err.println(caseToGo);
         robots[i].directionX = caseToGo.x;
         robots[i].directionY = caseToGo.y;
     }
@@ -124,6 +145,10 @@ class Player {
     }
 
     private static void putRadar() {
+        if (radarPositions.isEmpty()) {
+            System.out.println("WAIT");
+            return;
+        }
         int position = robots[0].type == Entity_Type.ALLY_ROBOT ? 0 : 5;
         if (robots[position].isInHeadquarters() && radarCooldown == 0 && robots[position].item != Item_Type.RADAR){
             System.out.println("REQUEST RADAR");
@@ -131,23 +156,14 @@ class Player {
         } else if (!isRadarSet && robots[position].isInHeadquarters() && radarCooldown > 0 && robots[position].item != Item_Type.RADAR) {
             System.out.println("WAIT");
         } else if (!isRadarSet && !robots[position].isInNextRadarPosition()) {
-            System.out.println("MOVE " + nextRadarX + " " + nextRadarY);
+            System.out.println("MOVE " + radarPositions.getFirst().x + " " + radarPositions.getFirst().y);
         } else if (robots[position].isInNextRadarPosition()) {
             System.out.println("DIG " + robots[position].x + " " + robots[position].y);
-            calculateNextRadarPosition();
+            radarPositions.removeFirst();
             isRadarSet = true;
             isradarJustSet = true;
         } else {
-            System.out.println("MOVE " + " " + 0 + " " + nextRadarY);
-        }
-    }
-
-    private static void calculateNextRadarPosition() {
-        if (nextRadarX + 8 < width) {
-            nextRadarX+=8;
-        } else if (nextRadarY + 8 < height) {
-            nextRadarY+=8;
-            nextRadarX=4;
+            System.out.println("MOVE " + " " + 0 + " " + radarPositions.getFirst().y);
         }
     }
 
@@ -170,11 +186,19 @@ class Player {
     }
 
     public static class Case {
-        String ore;
+        int ore;
         boolean hole;
         int idRobot;
         int x;
         int y;
+
+        Case() {
+        }
+
+        Case(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
 
         @Override
         public String toString() {
@@ -208,7 +232,8 @@ class Player {
         }
 
         boolean isInNextRadarPosition() {
-            return x == nextRadarX && y == nextRadarY;
+            if (radarPositions.isEmpty()) return false;
+            return x == radarPositions.getFirst().x && y == radarPositions.getFirst().y;
         }
 
         @Override
