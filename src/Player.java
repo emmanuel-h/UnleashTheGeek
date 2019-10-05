@@ -1,9 +1,11 @@
 import java.util.*;
 
-// TODO: If robot dig and find nothing, he return to headquarters
+// TODO: If robot dig and find nothing, he returns to headquarters
 // TODO: Sometimes, robots goes to the same ore vein
 // TODO: Modify TreeSet Collection to care about ore number in same case
 // TODO: Robots can start and try digging ore.
+// TODO: Improve radar robot path. -> list of radar position.
+// TODO: Radar robot can mine after his job.
 class Player {
 
     enum Entity_Type {
@@ -16,6 +18,7 @@ class Player {
     private static int width, height;
 
     private static boolean isRadarSet = false;
+    private static boolean isradarJustSet = false;
     private static int nextRadarX = 3;
     private static int nextRadarY = 3;
 
@@ -25,7 +28,7 @@ class Player {
     private static int trapCooldown;
     private static Entity[] robots = new Entity[10];
 
-    private static NavigableSet<Case> oreRemaining = new TreeSet<>(new CaseComparator());
+    private static List<Case> oreRemaining = new ArrayList<>();
 
     private static Case[][] board;
 
@@ -51,14 +54,18 @@ class Player {
                 for (int j = 0; j < width; j++) {
                     board[i][j].ore = in.next(); // amount of ore or "?" if unknown
                     board[i][j].hole = in.nextInt() == 1; // 1 if cell has a hole
-                    if (!board[i][j].ore.equals("?") && Integer.parseInt(board[i][j].ore) > 0) {
-                        oreRemaining.add(board[i][j]);
+                    if (isradarJustSet && !board[i][j].ore.equals("?") && Integer.parseInt(board[i][j].ore) > 0) {
+                        for (int k = 0 ; k <  Integer.parseInt(board[i][j].ore) ; k++) {
+                            oreRemaining.add(board[i][j]);
+                        }
                     }
                     if (!board[i][j].ore.equals("?") && Integer.parseInt(board[i][j].ore) == 0) {
-                        oreRemaining.remove(board[i][j]);
+                        while (oreRemaining.contains(board[i][j]))
+                            oreRemaining.remove(board[i][j]);
                     }
                 }
             }
+            isradarJustSet = false;
             int entityCount = in.nextInt(); // number of entities visible to you
             radarCooldown = in.nextInt(); // turns left until a new radar can be requested
             trapCooldown = in.nextInt(); // turns left until a new trap can be requested
@@ -88,6 +95,7 @@ class Player {
             }
             int firstAllyMiningRobot = robots[0].type == Entity_Type.ALLY_ROBOT ? 1 : 6;
             for (int i = firstAllyMiningRobot ; i < firstAllyMiningRobot + 4 ; i++) {
+                System.err.println(oreRemaining.size());
                 if (!oreRemaining.isEmpty() && robots[i].x == 0) {
                     chooseOreToGo(i);
                     move(i);
@@ -105,7 +113,8 @@ class Player {
     }
 
     private static void chooseOreToGo(int i) {
-        Case caseToGo = oreRemaining.pollFirst();
+        Case caseToGo = oreRemaining.remove(0);
+        System.err.println(caseToGo);
         robots[i].directionX = caseToGo.x;
         robots[i].directionY = caseToGo.y;
     }
@@ -127,6 +136,7 @@ class Player {
             System.out.println("DIG " + robots[position].x + " " + robots[position].y);
             calculateNextRadarPosition();
             isRadarSet = true;
+            isradarJustSet = true;
         } else {
             System.out.println("MOVE " + " " + 0 + " " + nextRadarY);
         }
@@ -165,6 +175,17 @@ class Player {
         int idRobot;
         int x;
         int y;
+
+        @Override
+        public String toString() {
+            return "Case{" +
+                    "ore='" + ore + '\'' +
+                    ", hole=" + hole +
+                    ", idRobot=" + idRobot +
+                    ", x=" + x +
+                    ", y=" + y +
+                    '}';
+        }
     }
 
     public static class Entity {
