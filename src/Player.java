@@ -1,9 +1,5 @@
 import java.util.*;
 
-// TODO: If robot dig and find nothing, he returns to headquarters
-// TODO: Modify TreeSet Collection to care about ore number in same case
-// TODO: Robots can start and try digging ore.
-// TODO: Radar robot can mine after his job.
 class Player {
 
     enum Entity_Type {
@@ -90,35 +86,43 @@ class Player {
                     robots[id].y = y;
                 }
             }
-            putRadar();
-            for (int i = 0; i < 5; i++) {
-                System.err.println(robots[i]);
+            int firstAllyMiningRobot;
+            int lastAllyMiningRobot;
+            if (!radarPositions.isEmpty()) {
+                putRadar();
+                firstAllyMiningRobot = robots[0].type == Entity_Type.ALLY_ROBOT ? 1 : 6;
+                lastAllyMiningRobot = firstAllyMiningRobot + 4;
+            } else {
+                firstAllyMiningRobot = robots[0].type == Entity_Type.ALLY_ROBOT ? 0 : 5;
+                lastAllyMiningRobot = firstAllyMiningRobot + 5;
             }
-            int firstAllyMiningRobot = robots[0].type == Entity_Type.ALLY_ROBOT ? 1 : 6;
-            for (int i = firstAllyMiningRobot ; i < firstAllyMiningRobot + 4 ; i++) {
-                System.err.println(oreRemaining.size());
-                if (!oreRemaining.isEmpty() && robots[i].x == 0) {
-                    chooseOreToGo(i);
-                    move(i);
-                } else if (robots[i].x != robots[i].directionX || robots[i].y != robots[i].directionY) {
-                    move(i);
-                } else if (robots[i].x == robots[i].directionX && robots[i].y == robots[i].directionY) {
-                    if (board[robots[i].y][robots[i].x].ore == 0) {
-                        if (oreRemaining.isEmpty())
-                            System.out.println("WAIT");
-                        else {
-                            chooseOreToGo(i);
-                            move(i);
-                        }
-                    } else {
-                        System.out.println("DIG " + robots[i].x + " " + robots[i].y);
-                        robots[i].directionX = 0;
-                    }
-                } else {
-                    System.out.println("WAIT"); // WAIT|MOVE x y|DIG x y|REQUEST item
-                }
+            for (int i = firstAllyMiningRobot ; i < lastAllyMiningRobot ; i++) {
+                mineOre(i);
             }
             initializationTurn = false;
+        }
+    }
+
+    private static void mineOre(int i) {
+        if (!oreRemaining.isEmpty() && robots[i].x == 0) {
+            chooseOreToGo(i);
+            move(i);
+        } else if (robots[i].x != robots[i].directionX || robots[i].y != robots[i].directionY) {
+            move(i);
+        } else if (robots[i].x == robots[i].directionX && robots[i].y == robots[i].directionY) {
+            if (board[robots[i].y][robots[i].x].ore == 0) {
+                if (oreRemaining.isEmpty())
+                    System.out.println("WAIT");
+                else {
+                    chooseOreToGo(i);
+                    move(i);
+                }
+            } else {
+                System.out.println("DIG " + robots[i].x + " " + robots[i].y);
+                robots[i].directionX = 0;
+            }
+        } else {
+            System.out.println("WAIT"); // WAIT|MOVE x y|DIG x y|REQUEST item
         }
     }
 
