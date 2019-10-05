@@ -5,6 +5,8 @@ import java.util.stream.Stream;
 // TODO: Mining robots take a trap if there are mining in the vein and no ather ally robot are going to mine this vein
 // TODO: DIG and not MOVE to gain some movements
 // TODO: Don't dig if it's not an ally who has dig -> avoid enemy trap (add weight to manhattan distance to heuristic).
+// TODO: Dig instead wait when no ore is available
+// TODO: action robot go for radar only when there is 5 or less ore available
 class Player {
 
     enum Entity_Type {
@@ -110,8 +112,12 @@ class Player {
 
     private static void mineOre(int i) {
         if (!oreRemaining.isEmpty() && robots[i].x == 0) {
-            chooseOreToGo(i);
-            move(i);
+            if (radarPositions.isEmpty() && radarCooldown == 0)
+                System.out.println("REQUEST RADAR");
+            else {
+                chooseOreToGo(i);
+                move(i);
+            }
         } else if (robots[i].x != robots[i].directionX || robots[i].y != robots[i].directionY) {
             move(i);
         } else if (robots[i].x == robots[i].directionX && robots[i].y == robots[i].directionY) {
