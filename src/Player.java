@@ -1,5 +1,10 @@
 import java.util.*;
+import java.util.stream.Stream;
 
+// TODO: Action robot can take a radar if he mines and a radar is up
+// TODO: Mining robots take a trap if there are mining in the vein and no ather ally robot are going to mine this vein
+// TODO: DIG and not MOVE to gain some movements
+// TODO: Don't dig if it's not an ally who has dig -> avoid enemy trap (add weight to manhattan distance to heuristic).
 class Player {
 
     enum Entity_Type {
@@ -139,9 +144,28 @@ class Player {
     }
 
     private static void chooseOreToGo(int i) {
-        Case caseToGo = oreRemaining.remove(0);
+        int index = getNearestOre(i);
+        Case caseToGo = oreRemaining.remove(index);
         robots[i].directionX = caseToGo.x;
         robots[i].directionY = caseToGo.y;
+    }
+
+    private static int getNearestOre(int i) {
+        if (oreRemaining.isEmpty()) return -1;
+        int index = 0;
+        int manhattanDistance = getManhattanDistance(robots[i].x, oreRemaining.get(0).x, robots[i].y, oreRemaining.get(0).y);
+        for (int j = 1; j < oreRemaining.size(); j++) {
+            int manhattanDistanceTemp = getManhattanDistance(robots[i].x, oreRemaining.get(j).x, robots[i].y, oreRemaining.get(j).y);
+            if (manhattanDistanceTemp < manhattanDistance) {
+                manhattanDistance = manhattanDistanceTemp;
+                index = j;
+            }
+        }
+        return index;
+    }
+
+    private static int getManhattanDistance(int x1, int x2, int y1, int y2) {
+        return Math.abs(x2-x1) + Math.abs(y2-y1);
     }
 
     private static void move(int i) {
@@ -214,6 +238,20 @@ class Player {
                     ", y=" + y +
                     '}';
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Case aCase = (Case) o;
+            return x == aCase.x &&
+                    y == aCase.y;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(x, y);
+        }
     }
 
     public static class Entity {
@@ -249,15 +287,6 @@ class Player {
                     ", x=" + x +
                     ", y=" + y +
                     '}';
-        }
-    }
-
-    static class CaseComparator implements Comparator<Case> {
-
-        @Override
-        public int compare(Case o1, Case o2) {
-            if (o1.x == o2.x && o1.y == o2.y) return 0;
-            return o1.x + o1.y > o2.x + o2.y ? 1 : -1;
         }
     }
 }
