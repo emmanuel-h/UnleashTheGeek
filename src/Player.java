@@ -1,12 +1,9 @@
 import java.util.*;
-import java.util.stream.Stream;
 
-// TODO: Action robot can take a radar if he mines and a radar is up
 // TODO: Mining robots take a trap if there are mining in the vein and no ather ally robot are going to mine this vein
 // TODO: DIG and not MOVE to gain some movements
 // TODO: Don't dig if it's not an ally who has dig -> avoid enemy trap (add weight to manhattan distance to heuristic).
 // TODO: Dig instead wait when no ore is available
-// TODO: action robot go for radar only when there is 5 or less ore available
 class Player {
 
     enum Entity_Type {
@@ -53,49 +50,12 @@ class Player {
         while (true) {
             int myScore = in.nextInt(); // Amount of ore delivered
             int opponentScore = in.nextInt();
-            for (int i = 0; i < height; i++) {
-                for (int j = 0; j < width; j++) {
-                    String ore = in.next();
-                    board[i][j].ore = "?".equals(ore) ? -1 : Integer.parseInt(ore); // amount of ore or "?" if unknown
-                    board[i][j].hole = in.nextInt() == 1; // 1 if cell has a hole
-                    if (isradarJustSet && board[i][j].ore > 0) {
-                        for (int k = 0 ; k <  board[i][j].ore ; k++) {
-                            oreRemaining.add(board[i][j]);
-                        }
-                    }
-                    if (board[i][j].ore == 0) {
-                        while (oreRemaining.contains(board[i][j]))
-                            oreRemaining.remove(board[i][j]);
-                    }
-                }
-            }
+            updateBoard(in);
             isradarJustSet = false;
-            int entityCount = in.nextInt(); // number of entities visible to you
-            radarCooldown = in.nextInt(); // turns left until a new radar can be requested
-            trapCooldown = in.nextInt(); // turns left until a new trap can be requested
-            for (int i = 0 ; i < entityCount ; i++) {
-                int id = in.nextInt(); // unique id of the entity
-                int type = in.nextInt(); // 0 for your robot, 1 for other robot, 2 for radar, 3 for trap
-                int x = in.nextInt();
-                int y = in.nextInt(); // position of the entity
-                int item = in.nextInt(); // if this entity is a robot, the item it is carrying (-1 for NONE, 2 for RADAR, 3 for TRAP, 4 for ORE)
-                if (initializationTurn) {
-                    robots[id] = new Entity(id, x, y);
-                    robots[id].type = convertEntityType(type);
-                    if (convertEntityType(type) == Entity_Type.ALLY_ROBOT) {
-                        robots[id].directionX = x;
-                        robots[id].directionY = y;
-                    }
-                }
-                if (id < 10 && (robots[id].type == Entity_Type.ALLY_ROBOT || robots[id].type == Entity_Type.ENEMY_ROBOT)) {
-                    robots[id].item = convertItemType(item);
-                    robots[id].x = x;
-                    robots[id].y = y;
-                }
-            }
+            updateEntities(in);
             int firstAllyMiningRobot;
             int lastAllyMiningRobot;
-            if (!radarPositions.isEmpty()) {
+            if (!radarPositions.isEmpty() && oreRemaining.size() < 5) {
                 putRadar();
                 firstAllyMiningRobot = robots[0].type == Entity_Type.ALLY_ROBOT ? 1 : 6;
                 lastAllyMiningRobot = firstAllyMiningRobot + 4;
@@ -107,6 +67,51 @@ class Player {
                 mineOre(i);
             }
             initializationTurn = false;
+        }
+    }
+
+    private static void updateEntities(Scanner in) {
+        int entityCount = in.nextInt(); // number of entities visible to you
+        radarCooldown = in.nextInt(); // turns left until a new radar can be requested
+        trapCooldown = in.nextInt(); // turns left until a new trap can be requested
+        for (int i = 0 ; i < entityCount ; i++) {
+            int id = in.nextInt(); // unique id of the entity
+            int type = in.nextInt(); // 0 for your robot, 1 for other robot, 2 for radar, 3 for trap
+            int x = in.nextInt();
+            int y = in.nextInt(); // position of the entity
+            int item = in.nextInt(); // if this entity is a robot, the item it is carrying (-1 for NONE, 2 for RADAR, 3 for TRAP, 4 for ORE)
+            if (initializationTurn) {
+                robots[id] = new Entity(id, x, y);
+                robots[id].type = convertEntityType(type);
+                if (convertEntityType(type) == Entity_Type.ALLY_ROBOT) {
+                    robots[id].directionX = x;
+                    robots[id].directionY = y;
+                }
+            }
+            if (id < 10 && (robots[id].type == Entity_Type.ALLY_ROBOT || robots[id].type == Entity_Type.ENEMY_ROBOT)) {
+                robots[id].item = convertItemType(item);
+                robots[id].x = x;
+                robots[id].y = y;
+            }
+        }
+    }
+
+    private static void updateBoard(Scanner in) {
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                String ore = in.next();
+                board[i][j].ore = "?".equals(ore) ? -1 : Integer.parseInt(ore); // amount of ore or "?" if unknown
+                board[i][j].hole = in.nextInt() == 1; // 1 if cell has a hole
+                if (isradarJustSet && board[i][j].ore > 0) {
+                    for (int k = 0 ; k <  board[i][j].ore ; k++) {
+                        oreRemaining.add(board[i][j]);
+                    }
+                }
+                if (board[i][j].ore == 0) {
+                    while (oreRemaining.contains(board[i][j]))
+                        oreRemaining.remove(board[i][j]);
+                }
+            }
         }
     }
 
