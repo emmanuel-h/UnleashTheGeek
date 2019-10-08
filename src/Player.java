@@ -1,9 +1,27 @@
 import java.util.*;
 
+// 1. S'il y a un radar de disponible et qu'il y a moins de 5 minerais découverts, prendre un radar et le mettre au prochain endroit
+// 2. S'il n'y a pas de radar de disponible et qu'il n'y a plus de minerai découvert, miner au hasard
+// 3. Choisir le minerai le plus proche de sa position et aller le miner
+// 3. S'il y a un piège de disponible, et qu'il reste 2 minerais dans la veine, prendre un piège (1 fois sur 2).
+// Si toutes les positions de radars ont été prises, le robot peut prendre un radar (1 fois sur 2).
+// Bien mettre à jour la liste des minerais disponibles avec les informations des radars (notamment quand des robots ennemis minent)
+// S'il n'y a plus de minerai sur la case ou si après de miner le robot de transporte rien, il va miner le filon le plus proche.
+// Se souvenir où les pièges ont été posés
+
+// Structures :
+// 1 liste ordonnées de position de radar
+// 1 liste de cases à miner non triées
+// 1 tableau de Case représentant le plateau
+// 1 classe Robot avec son id, sa position actuelle, sa destination, ce qu'il transporte.
+// 1 classe Case avec s'il y a un trou dessus, le nombre de minerais disponibles, s'il y a un piège allié ou un radar allié.
+
+// TODO: Action robot can take a radar if he mines and a radar is up
 // TODO: Mining robots take a trap if there are mining in the vein and no ather ally robot are going to mine this vein
 // TODO: DIG and not MOVE to gain some movements
 // TODO: Don't dig if it's not an ally who has dig -> avoid enemy trap (add weight to manhattan distance to heuristic).
 // TODO: Dig instead wait when no ore is available
+// TODO: action robot go for radar only when there is 5 or less ore available
 class Player {
 
     enum Entity_Type {
@@ -22,7 +40,7 @@ class Player {
 
     private static int radarCooldown;
     private static int trapCooldown;
-    private static Entity[] robots = new Entity[10];
+    private static Robot[] robots = new Robot[5];
 
     private static List<Case> oreRemaining = new ArrayList<>();
 
@@ -51,22 +69,17 @@ class Player {
             int myScore = in.nextInt(); // Amount of ore delivered
             int opponentScore = in.nextInt();
             updateBoard(in);
-            isradarJustSet = false;
             updateEntities(in);
-            int firstAllyMiningRobot;
-            int lastAllyMiningRobot;
-            if (!radarPositions.isEmpty() && oreRemaining.size() < 5) {
-                putRadar();
-                firstAllyMiningRobot = robots[0].type == Entity_Type.ALLY_ROBOT ? 1 : 6;
-                lastAllyMiningRobot = firstAllyMiningRobot + 4;
-            } else {
-                firstAllyMiningRobot = robots[0].type == Entity_Type.ALLY_ROBOT ? 0 : 5;
-                lastAllyMiningRobot = firstAllyMiningRobot + 5;
+        }
+    }
+
+    private static void updateBoard(Scanner in) {
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                String ore = in.next();
+                board[i][j].ore = "?".equals(ore) ? -1 : Integer.parseInt(ore); // amount of ore or "?" if unknown
+                board[i][j].hole = in.nextInt() == 1; // 1 if cell has a hole
             }
-            for (int i = firstAllyMiningRobot ; i < lastAllyMiningRobot ; i++) {
-                mineOre(i);
-            }
-            initializationTurn = false;
         }
     }
 
@@ -80,65 +93,6 @@ class Player {
             int x = in.nextInt();
             int y = in.nextInt(); // position of the entity
             int item = in.nextInt(); // if this entity is a robot, the item it is carrying (-1 for NONE, 2 for RADAR, 3 for TRAP, 4 for ORE)
-            if (initializationTurn) {
-                robots[id] = new Entity(id, x, y);
-                robots[id].type = convertEntityType(type);
-                if (convertEntityType(type) == Entity_Type.ALLY_ROBOT) {
-                    robots[id].directionX = x;
-                    robots[id].directionY = y;
-                }
-            }
-            if (id < 10 && (robots[id].type == Entity_Type.ALLY_ROBOT || robots[id].type == Entity_Type.ENEMY_ROBOT)) {
-                robots[id].item = convertItemType(item);
-                robots[id].x = x;
-                robots[id].y = y;
-            }
-        }
-    }
-
-    private static void updateBoard(Scanner in) {
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
-                String ore = in.next();
-                board[i][j].ore = "?".equals(ore) ? -1 : Integer.parseInt(ore); // amount of ore or "?" if unknown
-                board[i][j].hole = in.nextInt() == 1; // 1 if cell has a hole
-                if (isradarJustSet && board[i][j].ore > 0) {
-                    for (int k = 0 ; k <  board[i][j].ore ; k++) {
-                        oreRemaining.add(board[i][j]);
-                    }
-                }
-                if (board[i][j].ore == 0) {
-                    while (oreRemaining.contains(board[i][j]))
-                        oreRemaining.remove(board[i][j]);
-                }
-            }
-        }
-    }
-
-    private static void mineOre(int i) {
-        if (!oreRemaining.isEmpty() && robots[i].x == 0) {
-            if (radarPositions.isEmpty() && radarCooldown == 0)
-                System.out.println("REQUEST RADAR");
-            else {
-                chooseOreToGo(i);
-                move(i);
-            }
-        } else if (robots[i].x != robots[i].directionX || robots[i].y != robots[i].directionY) {
-            move(i);
-        } else if (robots[i].x == robots[i].directionX && robots[i].y == robots[i].directionY) {
-            if (board[robots[i].y][robots[i].x].ore == 0) {
-                if (oreRemaining.isEmpty())
-                    System.out.println("WAIT");
-                else {
-                    chooseOreToGo(i);
-                    move(i);
-                }
-            } else {
-                System.out.println("DIG " + robots[i].x + " " + robots[i].y);
-                robots[i].directionX = 0;
-            }
-        } else {
-            System.out.println("WAIT"); // WAIT|MOVE x y|DIG x y|REQUEST item
         }
     }
 
@@ -152,13 +106,6 @@ class Player {
         radarPositions.add(new Case(5, 13));
         radarPositions.add(new Case(15, 13));
         radarPositions.add(new Case(24, 13));
-    }
-
-    private static void chooseOreToGo(int i) {
-        int index = getNearestOre(i);
-        Case caseToGo = oreRemaining.remove(index);
-        robots[i].directionX = caseToGo.x;
-        robots[i].directionY = caseToGo.y;
     }
 
     private static int getNearestOre(int i) {
@@ -177,33 +124,6 @@ class Player {
 
     private static int getManhattanDistance(int x1, int x2, int y1, int y2) {
         return Math.abs(x2-x1) + Math.abs(y2-y1);
-    }
-
-    private static void move(int i) {
-        System.out.println("MOVE " + robots[i].directionX + " " + robots[i].directionY);
-    }
-
-    private static void putRadar() {
-        if (radarPositions.isEmpty()) {
-            System.out.println("WAIT");
-            return;
-        }
-        int position = robots[0].type == Entity_Type.ALLY_ROBOT ? 0 : 5;
-        if (robots[position].isInHeadquarters() && radarCooldown == 0 && robots[position].item != Item_Type.RADAR){
-            System.out.println("REQUEST RADAR");
-            isRadarSet = false;
-        } else if (!isRadarSet && robots[position].isInHeadquarters() && radarCooldown > 0 && robots[position].item != Item_Type.RADAR) {
-            System.out.println("WAIT");
-        } else if (!isRadarSet && !robots[position].isInNextRadarPosition()) {
-            System.out.println("MOVE " + radarPositions.getFirst().x + " " + radarPositions.getFirst().y);
-        } else if (robots[position].isInNextRadarPosition()) {
-            System.out.println("DIG " + robots[position].x + " " + robots[position].y);
-            radarPositions.removeFirst();
-            isRadarSet = true;
-            isradarJustSet = true;
-        } else {
-            System.out.println("MOVE " + " " + 0 + " " + radarPositions.getFirst().y);
-        }
     }
 
     private static Entity_Type convertEntityType(int type) {
@@ -227,6 +147,8 @@ class Player {
     public static class Case {
         int ore;
         boolean hole;
+        boolean trapped;
+        boolean radar;
         int idRobot;
         int x;
         int y;
@@ -242,12 +164,12 @@ class Player {
         @Override
         public String toString() {
             return "Case{" +
-                    "ore='" + ore + '\'' +
-                    ", hole=" + hole +
-                    ", idRobot=" + idRobot +
-                    ", x=" + x +
-                    ", y=" + y +
-                    '}';
+                "ore='" + ore + '\'' +
+                ", hole=" + hole +
+                ", idRobot=" + idRobot +
+                ", x=" + x +
+                ", y=" + y +
+                '}';
         }
 
         @Override
@@ -256,7 +178,7 @@ class Player {
             if (o == null || getClass() != o.getClass()) return false;
             Case aCase = (Case) o;
             return x == aCase.x &&
-                    y == aCase.y;
+                y == aCase.y;
         }
 
         @Override
@@ -265,14 +187,19 @@ class Player {
         }
     }
 
-    public static class Entity {
-        int id;
-        Entity_Type type;
-        Item_Type item;
-        int x;
-        int y;
+    static class Robot extends Entity {
         int directionX;
         int directionY;
+        Item_Type item;
+    }
+
+    static class Entity {
+        int id;
+        Entity_Type type;
+        int x;
+        int y;
+
+        Entity() {}
 
         Entity(int id, int x, int y) {
             this.id = id;
@@ -287,17 +214,6 @@ class Player {
         boolean isInNextRadarPosition() {
             if (radarPositions.isEmpty()) return false;
             return x == radarPositions.getFirst().x && y == radarPositions.getFirst().y;
-        }
-
-        @Override
-        public String toString() {
-            return "Entity{" +
-                    "id=" + id +
-                    ", type=" + type +
-                    ", item=" + item +
-                    ", x=" + x +
-                    ", y=" + y +
-                    '}';
         }
     }
 }
