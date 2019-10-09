@@ -33,20 +33,20 @@ class Player {
 
     private static int width, height;
 
-    private static boolean isRadarSet = false;
-    private static boolean isradarJustSet = false;
-
-    private static boolean initializationTurn = true;
-
     private static int radarCooldown;
     private static int trapCooldown;
     private static Robot[] robots = new Robot[5];
 
-    private static List<Case> oreRemaining = new ArrayList<>();
+    private static ArrayList<Case> oreRemaining = new ArrayList<>();
+    private static ArrayList<Case> robotsDestination = new ArrayList<>();
 
     private static Case[][] board;
 
     private static LinkedList<Case> radarPositions = new LinkedList<>();
+
+    private static boolean firstTurn = true;
+
+    private static boolean radarRequested = false;
 
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
@@ -70,15 +70,20 @@ class Player {
             int opponentScore = in.nextInt();
             updateBoard(in);
             updateEntities(in);
+            robotTurn();
         }
     }
 
     private static void updateBoard(Scanner in) {
+        oreRemaining = new ArrayList<>();
         for (int i = 0; i < height; i++) {
             for (int j = 0; j < width; j++) {
                 String ore = in.next();
                 board[i][j].ore = "?".equals(ore) ? -1 : Integer.parseInt(ore); // amount of ore or "?" if unknown
                 board[i][j].hole = in.nextInt() == 1; // 1 if cell has a hole
+                for (int k = 0 ; k < board[i][j].ore ; k++) {
+                    oreRemaining.add(new Case(board[i][j].x, board[i][j].y));
+                }
             }
         }
     }
@@ -93,7 +98,70 @@ class Player {
             int x = in.nextInt();
             int y = in.nextInt(); // position of the entity
             int item = in.nextInt(); // if this entity is a robot, the item it is carrying (-1 for NONE, 2 for RADAR, 3 for TRAP, 4 for ORE)
+            if (firstTurn && type == 0) {
+                robots[id % 5] = new Robot(id, x, y);
+            }
+            if (type == 0) {
+                robots[id % 5].item = convertItemType(item);
+                robots[id % 5].lastX = robots[id % 5].x;
+                robots[id % 5].lastY = robots[id % 5].y;
+                robots[id % 5].x = x;
+                robots[id % 5].y = y;
+                oreRemaining.remove(new Case(robots[id % 5].directionX, robots[id % 5].directionY));
+            }
         }
+        firstTurn = false;
+    }
+
+    private static void robotTurn() {
+        radarRequested = false;
+        for (int i = 0 ; i < 5 ; i++) {
+            if (robots[i].x != -1 && robots[i].y != -1) {
+                if (robots[i].item == Item_Type.RADAR) {
+                    printMove(robots[i]);
+                // Vient de miner du minerai
+                } else if (robots[i].hasDoneAction() && robots[i].item == Item_Type.ORE) {
+                    System.err.println(robots[i]);
+                    goBackToHeadquarters(i);
+                    printMove(robots[i]);
+                    // A essayé de miner mais n'a rien trouvé
+                } else if (!robots[i].isInHeadquarters() && robots[i].hasDoneAction() && robots[i].item == Item_Type.NONE) {
+                    goToNextOre(i);
+                    // Est dans les quartiers généraux
+                } else if (robots[i].isInHeadquarters()) {
+                    // S'il faut poser un nouveau radar
+                    if (!radarRequested && radarCooldown <= 0 && !radarPositions.isEmpty() && oreRemaining.size() <= 5) {
+                        System.out.println("REQUEST RADAR");
+                        Case caseRadar = radarPositions.remove();
+                        robots[i].directionX = caseRadar.x;
+                        robots[i].directionY = caseRadar.y;
+                        radarRequested = true;
+                        // S'il n'y a plus de radars dispos
+                    } else if (!radarRequested && radarCooldown <= 0 && radarPositions.isEmpty() && Math.random() < 0.5) {
+                        System.out.println("REQUEST RADAR");
+                        radarRequested = true;
+                    } else if (oreRemaining.isEmpty()) {
+                        System.out.println("WAIT");
+                    } else {
+                        goToNextOre(i);
+                    }
+                    // Cas par défaut : doit continuer l'action courante
+                } else {
+                    printMove(robots[i]);
+                }
+            } else {
+                System.out.println("WAIT");
+            }
+        }
+    }
+
+    private static void printMove(Robot robot) {
+        String action = robot.directionX == 0 ? "MOVE" : "DIG";
+        System.out.println(action + " " + robot.directionX + " " + robot.directionY);
+    }
+
+    private static void goBackToHeadquarters(int i) {
+        robots[i % 5].directionX = 0;
     }
 
     private static void fillRadarPositions() {
@@ -106,6 +174,18 @@ class Player {
         radarPositions.add(new Case(5, 13));
         radarPositions.add(new Case(15, 13));
         radarPositions.add(new Case(24, 13));
+    }
+
+    private static void goToNextOre(int i) {
+        int index = getNearestOre(i % 5);
+        if (index == -1) {
+            System.out.println("WAIT");
+        } else {
+            Case caseToGo = oreRemaining.remove(index);
+            robots[i % 5].directionX = caseToGo.x;
+            robots[i % 5].directionY = caseToGo.y;
+            System.out.println("DIG " + robots[i % 5].directionX + " " + robots[i % 5].directionY);
+        }
     }
 
     private static int getNearestOre(int i) {
@@ -164,12 +244,12 @@ class Player {
         @Override
         public String toString() {
             return "Case{" +
-                "ore='" + ore + '\'' +
-                ", hole=" + hole +
-                ", idRobot=" + idRobot +
-                ", x=" + x +
-                ", y=" + y +
-                '}';
+                    "ore='" + ore + '\'' +
+                    ", hole=" + hole +
+                    ", idRobot=" + idRobot +
+                    ", x=" + x +
+                    ", y=" + y +
+                    '}';
         }
 
         @Override
@@ -178,7 +258,7 @@ class Player {
             if (o == null || getClass() != o.getClass()) return false;
             Case aCase = (Case) o;
             return x == aCase.x &&
-                y == aCase.y;
+                    y == aCase.y;
         }
 
         @Override
@@ -190,7 +270,36 @@ class Player {
     static class Robot extends Entity {
         int directionX;
         int directionY;
+        int lastX;
+        int lastY;
         Item_Type item;
+
+        Robot(int id, int x, int y) {
+            super(id, x, y);
+            this.lastX = x;
+            this.lastY = y;
+            this.directionX = x;
+            this.directionY = y;
+        }
+
+        boolean hasDoneAction() {
+            return super.x != -1 && super.y != -1 && x == lastX && y == lastY;
+        }
+
+        @Override
+        public String toString() {
+            return "Robot{" +
+                    "directionX=" + directionX +
+                    ", directionY=" + directionY +
+                    ", lastX=" + lastX +
+                    ", lastY=" + lastY +
+                    ", item=" + item +
+                    ", id=" + id +
+                    ", type=" + type +
+                    ", x=" + x +
+                    ", y=" + y +
+                    '}';
+        }
     }
 
     static class Entity {
@@ -214,6 +323,16 @@ class Player {
         boolean isInNextRadarPosition() {
             if (radarPositions.isEmpty()) return false;
             return x == radarPositions.getFirst().x && y == radarPositions.getFirst().y;
+        }
+
+        @Override
+        public String toString() {
+            return "Entity{" +
+                    "id=" + id +
+                    ", type=" + type +
+                    ", x=" + x +
+                    ", y=" + y +
+                    '}';
         }
     }
 }
