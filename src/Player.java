@@ -3,6 +3,7 @@ import java.util.*;
 // TODO: Le bot s'arrête deux tours à la base quand il prend un item -> radar ou piege
 // TODO: Miner au hasard de 1 à 4 cases au lieu de wait
 // TODO: Optimiser le placement des radars -> commencer à 10-11 et garder les extrémités pour la fin
+// TODO: Poser plus de radars (ressemble à des pièges pour l'adversaire).
 
 class Player {
 
