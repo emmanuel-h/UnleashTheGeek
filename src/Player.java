@@ -2,6 +2,7 @@ import java.util.*;
 
 // TODO: Le bot s'arrête deux tours à la base quand il prend un item -> radar ou piege
 // TODO: Miner au hasard de 1 à 4 cases au lieu de wait
+// TODO: Optimiser le placement des radars -> commencer à 10-11 et garder les extrémités pour la fin
 
 class Player {
 
@@ -168,8 +169,6 @@ class Player {
     }
 
     private static void fillRadarPositions() {
-        radarPositions.add(new Case(5, 5));
-        radarPositions.add(new Case(10, 9));
         radarPositions.add(new Case(14, 5));
         radarPositions.add(new Case(19, 9));
         radarPositions.add(new Case(23, 5));
@@ -177,6 +176,8 @@ class Player {
         radarPositions.add(new Case(5, 13));
         radarPositions.add(new Case(15, 13));
         radarPositions.add(new Case(24, 13));
+        radarPositions.add(new Case(5, 5));
+        radarPositions.add(new Case(10, 9));
     }
 
     private static void goToNextOre(int i) {
