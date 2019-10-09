@@ -1,27 +1,8 @@
 import java.util.*;
 
-// 1. S'il y a un radar de disponible et qu'il y a moins de 5 minerais découverts, prendre un radar et le mettre au prochain endroit
-// 2. S'il n'y a pas de radar de disponible et qu'il n'y a plus de minerai découvert, miner au hasard
-// 3. Choisir le minerai le plus proche de sa position et aller le miner
-// 3. S'il y a un piège de disponible, et qu'il reste 2 minerais dans la veine, prendre un piège (1 fois sur 2).
-// Si toutes les positions de radars ont été prises, le robot peut prendre un radar (1 fois sur 2).
-// Bien mettre à jour la liste des minerais disponibles avec les informations des radars (notamment quand des robots ennemis minent)
-// S'il n'y a plus de minerai sur la case ou si après de miner le robot de transporte rien, il va miner le filon le plus proche.
-// Se souvenir où les pièges ont été posés
+// TODO: Le bot s'arrête deux tours à la base quand il prend un item -> radar ou piege
+// TODO: Miner au hasard de 1 à 4 cases au lieu de wait
 
-// Structures :
-// 1 liste ordonnées de position de radar
-// 1 liste de cases à miner non triées
-// 1 tableau de Case représentant le plateau
-// 1 classe Robot avec son id, sa position actuelle, sa destination, ce qu'il transporte.
-// 1 classe Case avec s'il y a un trou dessus, le nombre de minerais disponibles, s'il y a un piège allié ou un radar allié.
-
-// TODO: Action robot can take a radar if he mines and a radar is up
-// TODO: Mining robots take a trap if there are mining in the vein and no ather ally robot are going to mine this vein
-// TODO: DIG and not MOVE to gain some movements
-// TODO: Don't dig if it's not an ally who has dig -> avoid enemy trap (add weight to manhattan distance to heuristic).
-// TODO: Dig instead wait when no ore is available
-// TODO: action robot go for radar only when there is 5 or less ore available
 class Player {
 
     enum Entity_Type {
@@ -38,15 +19,16 @@ class Player {
     private static Robot[] robots = new Robot[5];
 
     private static ArrayList<Case> oreRemaining = new ArrayList<>();
-    private static ArrayList<Case> robotsDestination = new ArrayList<>();
 
     private static Case[][] board;
 
     private static LinkedList<Case> radarPositions = new LinkedList<>();
+    private static ArrayList<Case> trapPositions = new ArrayList<>();
 
     private static boolean firstTurn = true;
 
     private static boolean radarRequested = false;
+    private static boolean trapRequested = false;
 
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
@@ -92,6 +74,7 @@ class Player {
         int entityCount = in.nextInt(); // number of entities visible to you
         radarCooldown = in.nextInt(); // turns left until a new radar can be requested
         trapCooldown = in.nextInt(); // turns left until a new trap can be requested
+        trapPositions = new ArrayList<>();
         for (int i = 0 ; i < entityCount ; i++) {
             int id = in.nextInt(); // unique id of the entity
             int type = in.nextInt(); // 0 for your robot, 1 for other robot, 2 for radar, 3 for trap
@@ -109,21 +92,29 @@ class Player {
                 robots[id % 5].y = y;
                 oreRemaining.remove(new Case(robots[id % 5].directionX, robots[id % 5].directionY));
             }
+            if (type == 3) {
+                trapPositions.add(new Case(x, y));
+                oreRemaining.removeAll(Collections.singletonList(new Case(x, y)));
+            }
         }
         firstTurn = false;
     }
 
     private static void robotTurn() {
         radarRequested = false;
+        trapRequested = false;
         for (int i = 0 ; i < 5 ; i++) {
             if (robots[i].x != -1 && robots[i].y != -1) {
                 if (robots[i].item == Item_Type.RADAR) {
                     printMove(robots[i]);
-                // Vient de miner du minerai
+                    // Vient de miner du minerai
                 } else if (robots[i].hasDoneAction() && robots[i].item == Item_Type.ORE) {
-                    System.err.println(robots[i]);
                     goBackToHeadquarters(i);
                     printMove(robots[i]);
+                    if (robots[i].trapInTheBag) {
+                        board[robots[i].y][robots[i].x].trapped = true;
+                        robots[i].trapInTheBag = false;
+                    }
                     // A essayé de miner mais n'a rien trouvé
                 } else if (!robots[i].isInHeadquarters() && robots[i].hasDoneAction() && robots[i].item == Item_Type.NONE) {
                     goToNextOre(i);
@@ -143,11 +134,23 @@ class Player {
                     } else if (oreRemaining.isEmpty()) {
                         System.out.println("WAIT");
                     } else {
-                        goToNextOre(i);
+                        if (!trapRequested && trapCooldown <= 0) {
+                            System.out.println("REQUEST TRAP");
+                            trapRequested = true;
+                            robots[i].trapInTheBag = true;
+                        } else {
+                            goToNextOre(i);
+                        }
                     }
                     // Cas par défaut : doit continuer l'action courante
                 } else {
-                    printMove(robots[i]);
+                    Case destinationCase = new Case(robots[i].directionX, robots[i].directionY);
+                    if (trapPositions.contains(destinationCase)) {
+                        goToNextOre(i);
+                        // Si on veut miner un filon piégé
+                    } else {
+                        printMove(robots[i]);
+                    }
                 }
             } else {
                 System.out.println("WAIT");
@@ -273,6 +276,7 @@ class Player {
         int lastX;
         int lastY;
         Item_Type item;
+        boolean trapInTheBag;
 
         Robot(int id, int x, int y) {
             super(id, x, y);
