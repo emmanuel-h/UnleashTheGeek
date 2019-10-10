@@ -108,7 +108,7 @@ class Player {
         trapRequested = false;
         for (int i = 0 ; i < 5 ; i++) {
             if (robots[i].x != -1 && robots[i].y != -1) {
-                if (robots[i].item == Item_Type.RADAR) {
+                if (robots[i].item == Item_Type.RADAR && !robots[i].isInHeadquarters()) {
                     printMove(robots[i]);
                     // Vient de miner du minerai
                 } else if (robots[i].hasDoneAction() && robots[i].item == Item_Type.ORE) {
@@ -123,21 +123,23 @@ class Player {
                     goToNextOre(i);
                     // Est dans les quartiers généraux
                 } else if (robots[i].isInHeadquarters()) {
+                    if (robots[i].item == Item_Type.RADAR && !robots[i].hasReachDestination()) {
+                        printMove(robots[i]);
                     // S'il faut poser un nouveau radar
-                    if (!radarRequested && radarCooldown <= 0 && !radarPositions.isEmpty() && oreRemaining.size() <= 5) {
+                    } else if (!radarRequested && radarCooldown <= 0 && !radarPositions.isEmpty() && oreRemaining.size() < 10 && robots[i].item == Item_Type.NONE) {
                         System.out.println("REQUEST RADAR");
                         Case caseRadar = radarPositions.remove();
                         robots[i].directionX = caseRadar.x;
                         robots[i].directionY = caseRadar.y;
                         radarRequested = true;
                         // S'il n'y a plus de radars dispos
-                    } else if (!radarRequested && radarCooldown <= 0 && radarPositions.isEmpty() && Math.random() < 0.5) {
+                    } else if (!radarRequested && radarCooldown <= 0 && radarPositions.isEmpty() && robots[i].item == Item_Type.NONE) {
                         System.out.println("REQUEST RADAR");
                         radarRequested = true;
-                    } else if (oreRemaining.isEmpty()) {
+                    } else if (robots[i].hasReachDestination() && oreRemaining.isEmpty()) {
                         printRandomMovement(i);
                     } else {
-                        if (!trapRequested && trapCooldown <= 0) {
+                        if (!trapRequested && trapCooldown <= 0 && robots[i].item == Item_Type.NONE) {
                             System.out.println("REQUEST TRAP");
                             trapRequested = true;
                             robots[i].trapInTheBag = true;
@@ -162,10 +164,10 @@ class Player {
     }
 
     private static void printRandomMovement(int i) {
-        int random = rand.nextInt(4);
-        if (i + random < width) {
+        int random = rand.nextInt(4) + 1;
+        if (robots[i].x + random < width) {
             robots[i].directionX += random;
-        } else if (i + random < height) {
+        } else if (robots[i].x + random < height) {
             robots[i].directionY += random;
         } else {
             robots[i].directionX -= random;
@@ -301,6 +303,10 @@ class Player {
 
         boolean hasDoneAction() {
             return super.x != -1 && super.y != -1 && x == lastX && y == lastY;
+        }
+
+        boolean hasReachDestination() {
+            return super.x == directionX && super.y == directionY;
         }
 
         @Override
