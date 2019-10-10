@@ -2,7 +2,6 @@ import java.util.*;
 
 // TODO: Le bot s'arrête deux tours à la base quand il prend un item -> radar ou piege
 // TODO: Miner au hasard de 1 à 4 cases au lieu de wait
-// TODO: Optimiser le placement des radars -> commencer à 10-11 et garder les extrémités pour la fin
 // TODO: Poser plus de radars (ressemble à des pièges pour l'adversaire).
 
 class Player {
@@ -31,6 +30,8 @@ class Player {
 
     private static boolean radarRequested = false;
     private static boolean trapRequested = false;
+
+    private static Random rand = new Random();
 
     public static void main(String[] args) {
         Scanner in = new Scanner(System.in);
@@ -134,7 +135,7 @@ class Player {
                         System.out.println("REQUEST RADAR");
                         radarRequested = true;
                     } else if (oreRemaining.isEmpty()) {
-                        System.out.println("WAIT");
+                        printRandomMovement(i);
                     } else {
                         if (!trapRequested && trapCooldown <= 0) {
                             System.out.println("REQUEST TRAP");
@@ -155,9 +156,21 @@ class Player {
                     }
                 }
             } else {
-                System.out.println("WAIT");
+                printRandomMovement(i);
             }
         }
+    }
+
+    private static void printRandomMovement(int i) {
+        int random = rand.nextInt(4);
+        if (i + random < width) {
+            robots[i].directionX += random;
+        } else if (i + random < height) {
+            robots[i].directionY += random;
+        } else {
+            robots[i].directionX -= random;
+        }
+        System.out.println("DIG " + robots[i].directionX + " " + robots[i].directionY);
     }
 
     private static void printMove(Robot robot) {
@@ -170,21 +183,19 @@ class Player {
     }
 
     private static void fillRadarPositions() {
-        radarPositions.add(new Case(14, 5));
-        radarPositions.add(new Case(19, 9));
-        radarPositions.add(new Case(23, 5));
-        radarPositions.add(new Case(28, 9));
-        radarPositions.add(new Case(5, 13));
-        radarPositions.add(new Case(15, 13));
-        radarPositions.add(new Case(24, 13));
-        radarPositions.add(new Case(5, 5));
-        radarPositions.add(new Case(10, 9));
+        radarPositions.add(new Case(10, 5));
+        radarPositions.add(new Case(11, 10));
+        radarPositions.add(new Case(17, 5));
+        radarPositions.add(new Case(18, 10));
+        radarPositions.add(new Case(23, 4));
+        radarPositions.add(new Case(24, 10));
+        radarPositions.add(new Case(5, 8));
     }
 
     private static void goToNextOre(int i) {
         int index = getNearestOre(i % 5);
         if (index == -1) {
-            System.out.println("WAIT");
+            printRandomMovement(i);
         } else {
             Case caseToGo = oreRemaining.remove(index);
             robots[i % 5].directionX = caseToGo.x;
