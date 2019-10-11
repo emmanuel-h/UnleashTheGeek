@@ -1,8 +1,7 @@
 import java.util.*;
 
-// TODO: Le bot s'arrête deux tours à la base quand il prend un item -> radar ou piege
-// TODO: Miner au hasard de 1 à 4 cases au lieu de wait
-// TODO: Poser plus de radars (ressemble à des pièges pour l'adversaire).
+// TODO: Tout faire par mouvement -> %4 ou /4
+// TODO: Eviter les pièges adverses
 
 class Player {
 
@@ -18,6 +17,7 @@ class Player {
     private static int radarCooldown;
     private static int trapCooldown;
     private static Robot[] robots = new Robot[5];
+    private static Robot[] enemyRobots = new Robot[5];
 
     private static ArrayList<Case> oreRemaining = new ArrayList<>();
 
@@ -30,6 +30,8 @@ class Player {
 
     private static boolean radarRequested = false;
     private static boolean trapRequested = false;
+
+    private static int nbTurn = 0;
 
     private static Random rand = new Random();
 
@@ -51,6 +53,7 @@ class Player {
 
         // game loop
         while (true) {
+            nbTurn++;
             int myScore = in.nextInt(); // Amount of ore delivered
             int opponentScore = in.nextInt();
             updateBoard(in);
@@ -65,7 +68,10 @@ class Player {
             for (int j = 0; j < width; j++) {
                 String ore = in.next();
                 board[i][j].ore = "?".equals(ore) ? -1 : Integer.parseInt(ore); // amount of ore or "?" if unknown
-                board[i][j].hole = in.nextInt() == 1; // 1 if cell has a hole
+                if (in.nextInt() == 1 && !board[i][j].hole) {
+                    board[i][j].hole = true;
+                    board[i][j].turnHoleCreation = nbTurn;
+                }
                 for (int k = 0 ; k < board[i][j].ore ; k++) {
                     oreRemaining.add(new Case(board[i][j].x, board[i][j].y));
                 }
@@ -87,6 +93,9 @@ class Player {
             if (firstTurn && type == 0) {
                 robots[id % 5] = new Robot(id, x, y);
             }
+            if (firstTurn && type == 1) {
+                enemyRobots[id % 5] = new Robot(id, x, y);
+            }
             if (type == 0) {
                 robots[id % 5].item = convertItemType(item);
                 robots[id % 5].lastX = robots[id % 5].x;
@@ -95,12 +104,114 @@ class Player {
                 robots[id % 5].y = y;
                 oreRemaining.remove(new Case(robots[id % 5].directionX, robots[id % 5].directionY));
             }
+            if (type == 1) {
+                enemyRobots[id % 5].lastLastX = enemyRobots[id % 5].lastX;
+                enemyRobots[id % 5].lastLastY = enemyRobots[id % 5].lastY;
+                enemyRobots[id % 5].lastX = enemyRobots[id % 5].x;
+                enemyRobots[id % 5].lastY = enemyRobots[id % 5].y;
+                enemyRobots[id % 5].x = x;
+                enemyRobots[id % 5].y = y;
+            }
+            // If an enemy robot just take an item in the headquarters
+            if (!firstTurn && type == 1 && enemyRobots[id % 5].x == 0 && enemyRobots[id % 5].lastX == 0) {
+                enemyRobots[id % 5].dangerous = true;
+                System.err.println("dangerous " + id);
+            }
+            // If an enemy just put an item
+            if (!firstTurn && type == 1 && enemyRobots[id % 5].x != 0 && enemyRobots[id % 5].lastX == enemyRobots[id % 5].x && enemyRobots[id % 5].dangerous) {
+                enemyRobots[id % 5].dangerous = false;
+                findEnemyRobotHole(enemyRobots[id % 5]);
+            }
             if (type == 3) {
                 trapPositions.add(new Case(x, y));
                 oreRemaining.removeAll(Collections.singletonList(new Case(x, y)));
             }
         }
         firstTurn = false;
+    }
+
+    private static void findEnemyRobotHole(Robot enemyRobot) {
+        System.err.println(enemyRobot);
+        if (board[enemyRobot.y][enemyRobot.x].hole) {
+            board[enemyRobot.y][enemyRobot.x].trapped = true;
+            trapPositions.add(new Case(enemyRobot.x, enemyRobot.y));
+        }
+        // If he's from the east
+        if (enemyRobot.x - 1 > 0 && enemyRobot.lastX < enemyRobot.lastLastX) {
+            System.err.println("1");
+            if (board[enemyRobot.y][enemyRobot.x-1].hole) {
+                System.err.println("2");
+                board[enemyRobot.y][enemyRobot.x-1].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y));
+            }
+            if (enemyRobot.y - 1 > 0 && board[enemyRobot.y-1][enemyRobot.x-1].hole) {
+                System.err.println("3");
+                board[enemyRobot.y-1][enemyRobot.x-1].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y-1));
+            }
+            if (enemyRobot.y + 1 < height && board[enemyRobot.y+1][enemyRobot.x-1].hole) {
+                System.err.println("4");
+                board[enemyRobot.y+1][enemyRobot.x-1].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y+1));
+            }
+        }
+        // If he's from the west
+        if (enemyRobot.lastX > enemyRobot.lastLastX && enemyRobot.x + 1 < width) {
+            System.err.println("5");
+            if (board[enemyRobot.y][enemyRobot.x+1].hole) {
+                System.err.println("6");
+                board[enemyRobot.y][enemyRobot.x+1].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y));
+            }
+            if (enemyRobot.y - 1 > 0 && board[enemyRobot.y-1][enemyRobot.x+1].hole) {
+                System.err.println("7");
+                board[enemyRobot.y-1][enemyRobot.x+1].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y-1));
+            }
+            if (enemyRobot.y + 1 < height && board[enemyRobot.y+1][enemyRobot.x+1].hole) {
+                System.err.println("8");
+                board[enemyRobot.y+1][enemyRobot.x+1].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y+1));
+            }
+        }
+        // If he's from the south
+        if (enemyRobot.y - 1 > 0 && enemyRobot.lastY < enemyRobot.lastLastY) {
+                System.err.println("9");
+            if (board[enemyRobot.y-1][enemyRobot.x].hole) {
+                System.err.println("10");
+                board[enemyRobot.y-1][enemyRobot.x].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x, enemyRobot.y-1));
+            }
+            if (enemyRobot.x + 1 < width && board[enemyRobot.y-1][enemyRobot.x+1].hole) {
+                System.err.println("11");
+                board[enemyRobot.y-1][enemyRobot.x+1].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y-1));
+            }
+            if (enemyRobot.x - 1 > 0 && board[enemyRobot.y-1][enemyRobot.x-1].hole) {
+                System.err.println("12");
+                board[enemyRobot.y-1][enemyRobot.x-1].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y-1));
+            }
+        }
+        // If he's from the north
+        if (enemyRobot.y + 1 < height && enemyRobot.lastY > enemyRobot.lastLastY) {
+                System.err.println("13");
+            if (board[enemyRobot.y+1][enemyRobot.x].hole) {
+                System.err.println("14");
+                board[enemyRobot.y+1][enemyRobot.x].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x, enemyRobot.y+1));
+            }
+            if (enemyRobot.x + 1 < width && board[enemyRobot.y+1][enemyRobot.x+1].hole) {
+                System.err.println("15");
+                board[enemyRobot.y+1][enemyRobot.x+1].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y+1));
+            }
+            if (enemyRobot.x - 1 > 0 && board[enemyRobot.y+1][enemyRobot.x-1].hole) {
+                System.err.println("16");
+                board[enemyRobot.y+1][enemyRobot.x-1].trapped = true;
+                trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y+1));
+            }
+        }
     }
 
     private static void robotTurn() {
@@ -220,8 +331,8 @@ class Player {
         return index;
     }
 
-    private static int getManhattanDistance(int x1, int x2, int y1, int y2) {
-        return Math.abs(x2-x1) + Math.abs(y2-y1);
+    private static int getManhattanDistance(int robotX, int oreX, int robotY, int oreY) {
+        return Math.abs(oreX-robotX) + Math.abs(oreY-robotY) + oreX;
     }
 
     private static Entity_Type convertEntityType(int type) {
@@ -250,6 +361,7 @@ class Player {
         int idRobot;
         int x;
         int y;
+        int turnHoleCreation;
 
         Case() {
         }
@@ -262,12 +374,15 @@ class Player {
         @Override
         public String toString() {
             return "Case{" +
-                    "ore='" + ore + '\'' +
-                    ", hole=" + hole +
-                    ", idRobot=" + idRobot +
-                    ", x=" + x +
-                    ", y=" + y +
-                    '}';
+                "ore=" + ore +
+                ", hole=" + hole +
+                ", trapped=" + trapped +
+                ", radar=" + radar +
+                ", idRobot=" + idRobot +
+                ", x=" + x +
+                ", y=" + y +
+                ", turnHoleCreation=" + turnHoleCreation +
+                '}';
         }
 
         @Override
@@ -290,8 +405,11 @@ class Player {
         int directionY;
         int lastX;
         int lastY;
+        int lastLastX;
+        int lastLastY;
         Item_Type item;
         boolean trapInTheBag;
+        boolean dangerous;
 
         Robot(int id, int x, int y) {
             super(id, x, y);
@@ -299,6 +417,8 @@ class Player {
             this.lastY = y;
             this.directionX = x;
             this.directionY = y;
+            this.lastLastX = x;
+            this.lastLastY = y;
         }
 
         boolean hasDoneAction() {
@@ -312,16 +432,20 @@ class Player {
         @Override
         public String toString() {
             return "Robot{" +
-                    "directionX=" + directionX +
-                    ", directionY=" + directionY +
-                    ", lastX=" + lastX +
-                    ", lastY=" + lastY +
-                    ", item=" + item +
-                    ", id=" + id +
-                    ", type=" + type +
-                    ", x=" + x +
-                    ", y=" + y +
-                    '}';
+                "directionX=" + directionX +
+                ", directionY=" + directionY +
+                ", lastX=" + lastX +
+                ", lastY=" + lastY +
+                ", lastLastX=" + lastLastX +
+                ", lastLastY=" + lastLastY +
+                ", item=" + item +
+                ", trapInTheBag=" + trapInTheBag +
+                ", dangerous=" + dangerous +
+                ", id=" + id +
+                ", type=" + type +
+                ", x=" + x +
+                ", y=" + y +
+                '}';
         }
     }
 
