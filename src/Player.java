@@ -2,6 +2,7 @@ import java.util.*;
 
 // TODO: Tout faire par mouvement -> %4 ou /4
 // TODO: Eviter les pièges adverses
+// TODO: Ne pas poser de radars sur un piège
 
 class Player {
 
@@ -83,7 +84,7 @@ class Player {
         int entityCount = in.nextInt(); // number of entities visible to you
         radarCooldown = in.nextInt(); // turns left until a new radar can be requested
         trapCooldown = in.nextInt(); // turns left until a new trap can be requested
-        trapPositions = new ArrayList<>();
+//        trapPositions = new ArrayList<>();
         for (int i = 0 ; i < entityCount ; i++) {
             int id = in.nextInt(); // unique id of the entity
             int type = in.nextInt(); // 0 for your robot, 1 for other robot, 2 for radar, 3 for trap
@@ -115,10 +116,11 @@ class Player {
             // If an enemy robot just take an item in the headquarters
             if (!firstTurn && type == 1 && enemyRobots[id % 5].x == 0 && enemyRobots[id % 5].lastX == 0) {
                 enemyRobots[id % 5].dangerous = true;
-                System.err.println("dangerous " + id);
             }
             // If an enemy just put an item
-            if (!firstTurn && type == 1 && enemyRobots[id % 5].x != 0 && enemyRobots[id % 5].lastX == enemyRobots[id % 5].x && enemyRobots[id % 5].dangerous) {
+            if (!firstTurn && type == 1 && enemyRobots[id % 5].x != 0
+                    && enemyRobots[id % 5].lastX == enemyRobots[id % 5].x && enemyRobots[id % 5].lastY == enemyRobots[id % 5].y
+                    && enemyRobots[id % 5].dangerous) {
                 enemyRobots[id % 5].dangerous = false;
                 findEnemyRobotHole(enemyRobots[id % 5]);
             }
@@ -127,89 +129,86 @@ class Player {
                 oreRemaining.removeAll(Collections.singletonList(new Case(x, y)));
             }
         }
+        oreRemaining.removeAll(trapPositions);
         firstTurn = false;
     }
 
     private static void findEnemyRobotHole(Robot enemyRobot) {
-        System.err.println(enemyRobot);
+        if (enemyRobot.x < 0 || enemyRobot.y < 0) return;
         if (board[enemyRobot.y][enemyRobot.x].hole) {
-            board[enemyRobot.y][enemyRobot.x].trapped = true;
             trapPositions.add(new Case(enemyRobot.x, enemyRobot.y));
         }
         // If he's from the east
         if (enemyRobot.x - 1 > 0 && enemyRobot.lastX < enemyRobot.lastLastX) {
-            System.err.println("1");
             if (board[enemyRobot.y][enemyRobot.x-1].hole) {
-                System.err.println("2");
-                board[enemyRobot.y][enemyRobot.x-1].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y));
             }
             if (enemyRobot.y - 1 > 0 && board[enemyRobot.y-1][enemyRobot.x-1].hole) {
-                System.err.println("3");
-                board[enemyRobot.y-1][enemyRobot.x-1].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y-1));
             }
             if (enemyRobot.y + 1 < height && board[enemyRobot.y+1][enemyRobot.x-1].hole) {
-                System.err.println("4");
-                board[enemyRobot.y+1][enemyRobot.x-1].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y+1));
+            }
+            if (enemyRobot.y + 1 < height && board[enemyRobot.y + 1][enemyRobot.x].hole) {
+                trapPositions.add(new Case(enemyRobot.x, enemyRobot.y+1));
+            }
+            if (enemyRobot.y - 1 > 0 && board[enemyRobot.y - 1][enemyRobot.x].hole) {
+                trapPositions.add(new Case(enemyRobot.x, enemyRobot.y-1));
             }
         }
         // If he's from the west
         if (enemyRobot.lastX > enemyRobot.lastLastX && enemyRobot.x + 1 < width) {
-            System.err.println("5");
             if (board[enemyRobot.y][enemyRobot.x+1].hole) {
-                System.err.println("6");
-                board[enemyRobot.y][enemyRobot.x+1].trapped = true;
+                System.err.println("là");
                 trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y));
             }
             if (enemyRobot.y - 1 > 0 && board[enemyRobot.y-1][enemyRobot.x+1].hole) {
-                System.err.println("7");
-                board[enemyRobot.y-1][enemyRobot.x+1].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y-1));
             }
             if (enemyRobot.y + 1 < height && board[enemyRobot.y+1][enemyRobot.x+1].hole) {
-                System.err.println("8");
-                board[enemyRobot.y+1][enemyRobot.x+1].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y+1));
+            }
+            if (enemyRobot.y + 1 < height && board[enemyRobot.y+1][enemyRobot.x].hole) {
+                trapPositions.add(new Case(enemyRobot.x, enemyRobot.y+1));
+            }
+            if (enemyRobot.y - 1 > 0 && board[enemyRobot.y-1][enemyRobot.x].hole) {
+                trapPositions.add(new Case(enemyRobot.x, enemyRobot.y-1));
             }
         }
         // If he's from the south
         if (enemyRobot.y - 1 > 0 && enemyRobot.lastY < enemyRobot.lastLastY) {
-                System.err.println("9");
             if (board[enemyRobot.y-1][enemyRobot.x].hole) {
-                System.err.println("10");
-                board[enemyRobot.y-1][enemyRobot.x].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x, enemyRobot.y-1));
             }
             if (enemyRobot.x + 1 < width && board[enemyRobot.y-1][enemyRobot.x+1].hole) {
-                System.err.println("11");
-                board[enemyRobot.y-1][enemyRobot.x+1].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y-1));
             }
             if (enemyRobot.x - 1 > 0 && board[enemyRobot.y-1][enemyRobot.x-1].hole) {
-                System.err.println("12");
-                board[enemyRobot.y-1][enemyRobot.x-1].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y-1));
+            }
+            if (enemyRobot.x - 1 > 0 && board[enemyRobot.y][enemyRobot.x-1].hole) {
+                trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y));
+            }
+            if (enemyRobot.x + 1 < width && board[enemyRobot.y][enemyRobot.x+1].hole) {
+                trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y));
             }
         }
         // If he's from the north
         if (enemyRobot.y + 1 < height && enemyRobot.lastY > enemyRobot.lastLastY) {
-                System.err.println("13");
             if (board[enemyRobot.y+1][enemyRobot.x].hole) {
-                System.err.println("14");
-                board[enemyRobot.y+1][enemyRobot.x].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x, enemyRobot.y+1));
             }
             if (enemyRobot.x + 1 < width && board[enemyRobot.y+1][enemyRobot.x+1].hole) {
-                System.err.println("15");
-                board[enemyRobot.y+1][enemyRobot.x+1].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y+1));
             }
             if (enemyRobot.x - 1 > 0 && board[enemyRobot.y+1][enemyRobot.x-1].hole) {
-                System.err.println("16");
-                board[enemyRobot.y+1][enemyRobot.x-1].trapped = true;
                 trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y+1));
+            }
+            if (enemyRobot.x - 1 > 0 && board[enemyRobot.y][enemyRobot.x-1].hole) {
+                trapPositions.add(new Case(enemyRobot.x-1, enemyRobot.y));
+            }
+            if (enemyRobot.x + 1 < width && board[enemyRobot.y][enemyRobot.x+1].hole) {
+                trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y));
             }
         }
     }
@@ -219,8 +218,13 @@ class Player {
         trapRequested = false;
         for (int i = 0 ; i < 5 ; i++) {
             if (robots[i].x != -1 && robots[i].y != -1) {
+                // Transporte un radar
                 if (robots[i].item == Item_Type.RADAR && !robots[i].isInHeadquarters()) {
-                    printMove(robots[i]);
+                    if (trapPositions.contains(new Case(robots[i].directionX, robots[i].directionY))) {
+                        goToNextOre(i);
+                    } else {
+                        printMove(robots[i]);
+                    }
                     // Vient de miner du minerai
                 } else if (robots[i].hasDoneAction() && robots[i].item == Item_Type.ORE) {
                     goBackToHeadquarters(i);
@@ -278,7 +282,7 @@ class Player {
         int random = rand.nextInt(4) + 1;
         if (robots[i].x + random < width) {
             robots[i].directionX += random;
-        } else if (robots[i].x + random < height) {
+        } else if (robots[i].y + random < height) {
             robots[i].directionY += random;
         } else {
             robots[i].directionX -= random;
