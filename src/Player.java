@@ -1,8 +1,7 @@
 import java.util.*;
 
-// TODO: Tout faire par mouvement -> %4 ou /4
-// TODO: Eviter les pièges adverses
-// TODO: Ne pas poser de radars sur un piège
+// TODO: S'il n'y a aucun minerai de disponible et aucun robot qui rentre à la base, le robot courant rentre à la base.
+// TODO: Améliorer la détection de radar en prenant uniquement le nouveau trou s'il existe et qu'aucun autre robot n'a pu le faire
 
 class Player {
 
@@ -60,6 +59,7 @@ class Player {
             updateBoard(in);
             updateEntities(in);
             robotTurn();
+            firstTurn = false;
         }
     }
 
@@ -130,7 +130,6 @@ class Player {
             }
         }
         oreRemaining.removeAll(trapPositions);
-        firstTurn = false;
     }
 
     private static void findEnemyRobotHole(Robot enemyRobot) {
@@ -159,7 +158,6 @@ class Player {
         // If he's from the west
         if (enemyRobot.lastX > enemyRobot.lastLastX && enemyRobot.x + 1 < width) {
             if (board[enemyRobot.y][enemyRobot.x+1].hole) {
-                System.err.println("là");
                 trapPositions.add(new Case(enemyRobot.x+1, enemyRobot.y));
             }
             if (enemyRobot.y - 1 > 0 && board[enemyRobot.y-1][enemyRobot.x+1].hole) {
@@ -214,6 +212,18 @@ class Player {
     }
 
     private static void robotTurn() {
+        // Choisit le meilleur robot pour poser le premier radar
+        if (firstTurn) {
+            int idRadarRobot = findRobotNextToFirstRadar();
+            playFirstTurn(idRadarRobot);
+            return;
+        }
+
+        // Si personne n'a de radar et personne ne retourne au HQ et qu'il n'y a plus de minerai, retourner au hq
+        if (oreRemaining.isEmpty() && nobodyHasRadar() && nobodyGoesToHQ()) {
+
+        }
+
         radarRequested = false;
         trapRequested = false;
         for (int i = 0 ; i < 5 ; i++) {
@@ -241,7 +251,7 @@ class Player {
                     if (robots[i].item == Item_Type.RADAR && !robots[i].hasReachDestination()) {
                         printMove(robots[i]);
                     // S'il faut poser un nouveau radar
-                    } else if (!radarRequested && radarCooldown <= 0 && !radarPositions.isEmpty() && oreRemaining.size() < 10 && robots[i].item == Item_Type.NONE) {
+                    } else if (!radarRequested && radarCooldown <= 0 && !radarPositions.isEmpty() && oreRemaining.size() < 20 && robots[i].item == Item_Type.NONE) {
                         System.out.println("REQUEST RADAR");
                         Case caseRadar = radarPositions.remove();
                         robots[i].directionX = caseRadar.x;
@@ -278,6 +288,32 @@ class Player {
         }
     }
 
+    private static void playFirstTurn(int idRadarRobot) {
+        for (int i = 0; i < 5; i++) {
+            if (i == idRadarRobot) {
+                Case caseRadar = radarPositions.remove();
+                robots[i].directionX = caseRadar.x;
+                robots[i].directionY = caseRadar.y;
+                radarRequested = true;
+                System.out.println("REQUEST RADAR");
+            } else {
+                printRandomMovement(i);
+            }
+        }
+    }
+
+    private static int findRobotNextToFirstRadar() {
+        int idRobot = 0;
+        int distanceMin = Math.abs(radarPositions.get(0).y - robots[0].y);
+        for (int i = 1; i < 5; i++) {
+            if (Math.abs(radarPositions.get(0).y - robots[i].y) < distanceMin) {
+                idRobot = i;
+                distanceMin = Math.abs(radarPositions.get(0).y - robots[0].y);
+            }
+        }
+        return idRobot;
+    }
+
     private static void printRandomMovement(int i) {
         int random = rand.nextInt(4) + 1;
         if (robots[i].x + random < width) {
@@ -300,13 +336,18 @@ class Player {
     }
 
     private static void fillRadarPositions() {
-        radarPositions.add(new Case(10, 5));
-        radarPositions.add(new Case(11, 10));
-        radarPositions.add(new Case(17, 5));
-        radarPositions.add(new Case(18, 10));
-        radarPositions.add(new Case(23, 4));
-        radarPositions.add(new Case(24, 10));
-        radarPositions.add(new Case(5, 8));
+        radarPositions.add(new Case(6, 4));
+        radarPositions.add(new Case(6, 11));
+        radarPositions.add(new Case(13, 4));
+        radarPositions.add(new Case(13, 11));
+        radarPositions.add(new Case(20, 4));
+        radarPositions.add(new Case(20, 11));
+        radarPositions.add(new Case(27, 4));
+        radarPositions.add(new Case(27, 11));
+        radarPositions.add(new Case(4, 7));
+        radarPositions.add(new Case(10, 7));
+        radarPositions.add(new Case(17, 7));
+        radarPositions.add(new Case(24, 7));
     }
 
     private static void goToNextOre(int i) {
@@ -324,9 +365,9 @@ class Player {
     private static int getNearestOre(int i) {
         if (oreRemaining.isEmpty()) return -1;
         int index = 0;
-        int manhattanDistance = getManhattanDistance(robots[i].x, oreRemaining.get(0).x, robots[i].y, oreRemaining.get(0).y);
+        int manhattanDistance = getEuclidianDistance(robots[i].x, oreRemaining.get(0).x, robots[i].y, oreRemaining.get(0).y);
         for (int j = 1; j < oreRemaining.size(); j++) {
-            int manhattanDistanceTemp = getManhattanDistance(robots[i].x, oreRemaining.get(j).x, robots[i].y, oreRemaining.get(j).y);
+            int manhattanDistanceTemp = getEuclidianDistance(robots[i].x, oreRemaining.get(j).x, robots[i].y, oreRemaining.get(j).y);
             if (manhattanDistanceTemp < manhattanDistance) {
                 manhattanDistance = manhattanDistanceTemp;
                 index = j;
@@ -335,8 +376,10 @@ class Player {
         return index;
     }
 
-    private static int getManhattanDistance(int robotX, int oreX, int robotY, int oreY) {
-        return Math.abs(oreX-robotX) + Math.abs(oreY-robotY) + oreX;
+    private static int getEuclidianDistance(int robotX, int oreX, int robotY, int oreY) {
+        // racine carrée de la somme des carrés des différences de coordonnées en X et en Y.
+        return (int)(Math.ceil(Math.sqrt((Math.pow(oreX-robotX, 2) + Math.pow(oreY-robotY, 2)))/4.0)) + (int)(Math.ceil(oreX / 4.0));
+//        return (int)(Math.ceil((Math.abs(oreX-robotX) + Math.abs(oreY-robotY))/4.0)) + (int)(Math.ceil(oreX / 4.0));
     }
 
     private static Entity_Type convertEntityType(int type) {
