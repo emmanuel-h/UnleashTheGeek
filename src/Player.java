@@ -264,13 +264,13 @@ class Player {
                     } else if (robots[i].hasReachDestination() && oreRemaining.isEmpty()) {
                         printRandomMovement(i);
                     } else {
-                        if (!trapRequested && trapCooldown <= 0 && robots[i].item == Item_Type.NONE) {
-                            System.out.println("REQUEST TRAP");
-                            trapRequested = true;
-                            robots[i].trapInTheBag = true;
-                        } else {
-                            goToNextOre(i);
-                        }
+                        // if (!trapRequested && trapCooldown <= 0 && robots[i].item == Item_Type.NONE) {
+                        //     System.out.println("REQUEST TRAP");
+                        //     trapRequested = true;
+                        //     robots[i].trapInTheBag = true;
+                        // } else {
+                        goToNextOre(i);
+                        // }
                     }
                     // Cas par défaut : doit continuer l'action courante
                 } else {
@@ -336,18 +336,18 @@ class Player {
     }
 
     private static void fillRadarPositions() {
-        radarPositions.add(new Case(6, 4));
-        radarPositions.add(new Case(6, 11));
-        radarPositions.add(new Case(13, 4));
+        radarPositions.add(new Case(8, 3));
+        radarPositions.add(new Case(8, 11));
+        radarPositions.add(new Case(13, 7));
         radarPositions.add(new Case(13, 11));
-        radarPositions.add(new Case(20, 4));
-        radarPositions.add(new Case(20, 11));
-        radarPositions.add(new Case(27, 4));
-        radarPositions.add(new Case(27, 11));
-        radarPositions.add(new Case(4, 7));
-        radarPositions.add(new Case(10, 7));
-        radarPositions.add(new Case(17, 7));
-        radarPositions.add(new Case(24, 7));
+        radarPositions.add(new Case(18, 3));
+        radarPositions.add(new Case(18, 11));
+        radarPositions.add(new Case(23, 7));
+        radarPositions.add(new Case(26, 2));
+        radarPositions.add(new Case(26, 12));
+        radarPositions.add(new Case(3, 7));
+        // radarPositions.add(new Case(17, 7));
+        // radarPositions.add(new Case(24, 7));
     }
 
     private static void goToNextOre(int i) {
@@ -421,15 +421,15 @@ class Player {
         @Override
         public String toString() {
             return "Case{" +
-                "ore=" + ore +
-                ", hole=" + hole +
-                ", trapped=" + trapped +
-                ", radar=" + radar +
-                ", idRobot=" + idRobot +
-                ", x=" + x +
-                ", y=" + y +
-                ", turnHoleCreation=" + turnHoleCreation +
-                '}';
+                    "ore=" + ore +
+                    ", hole=" + hole +
+                    ", trapped=" + trapped +
+                    ", radar=" + radar +
+                    ", idRobot=" + idRobot +
+                    ", x=" + x +
+                    ", y=" + y +
+                    ", turnHoleCreation=" + turnHoleCreation +
+                    '}';
         }
 
         @Override
@@ -479,20 +479,20 @@ class Player {
         @Override
         public String toString() {
             return "Robot{" +
-                "directionX=" + directionX +
-                ", directionY=" + directionY +
-                ", lastX=" + lastX +
-                ", lastY=" + lastY +
-                ", lastLastX=" + lastLastX +
-                ", lastLastY=" + lastLastY +
-                ", item=" + item +
-                ", trapInTheBag=" + trapInTheBag +
-                ", dangerous=" + dangerous +
-                ", id=" + id +
-                ", type=" + type +
-                ", x=" + x +
-                ", y=" + y +
-                '}';
+                    "directionX=" + directionX +
+                    ", directionY=" + directionY +
+                    ", lastX=" + lastX +
+                    ", lastY=" + lastY +
+                    ", lastLastX=" + lastLastX +
+                    ", lastLastY=" + lastLastY +
+                    ", item=" + item +
+                    ", trapInTheBag=" + trapInTheBag +
+                    ", dangerous=" + dangerous +
+                    ", id=" + id +
+                    ", type=" + type +
+                    ", x=" + x +
+                    ", y=" + y +
+                    '}';
         }
     }
 
